@@ -1,5 +1,5 @@
 use std::sync::atomic::Ordering::Relaxed;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::AtomicUsize;
 use bumpalo::Bump;
 use rand::{self, RngExt};
 use rand::rngs::StdRng;
@@ -45,7 +45,7 @@ fn split_dfs(root: &mut BSPNode<Tile>, depth: u32, rng: &mut StdRng) {
     }
 }
 
-fn construct_room(tile: Tile, rng: &mut StdRng, obj_data: &mut String, mut v: usize) -> Option<Room> {
+fn construct_room(tile: Tile, rng: &mut StdRng, obj_data: &mut String, v: usize) -> Option<Room> {
     if tile.traversible == false {
         return None
     }
@@ -73,23 +73,17 @@ fn construct_room(tile: Tile, rng: &mut StdRng, obj_data: &mut String, mut v: us
 
 }
 
-fn build_dfs(root: &mut BSPNode<Tile>, tvec: &mut Vec<Tile>, rng: &mut StdRng, obj_data: &mut String, mut v: usize) -> () {
-    
+fn build_dfs(root: &mut BSPNode<Tile>, tvec: &mut Vec<Tile>, rng: &mut StdRng, obj_data: &mut String, v: usize) -> () {
     if root.right == None {
             let r= construct_room( root.value, rng, obj_data, v);
 
+            //If a room was constructed, insert it into the tile in the tree node
             if r.is_some() {
-                tvec.push(Tile{
-            index: root.value.index,
-            lc: root.value.lc,
-            rc: root.value.rc,
-            traversible: true,
-            split_count: root.value.split_count,
-            room: r,
-            });
-
-            root.value.room = r;
-        }
+                root.value.room = r;
+            }
+            
+            //Push tile to tvec so it can be mapped
+            tvec.push(root.value);
     } else {
         build_dfs(root.right.as_deref_mut().unwrap(), tvec, rng, obj_data, v);
         build_dfs(root.left.as_deref_mut().unwrap(), tvec, rng, obj_data, v);       
@@ -136,6 +130,7 @@ pub fn initbt(size: Point3, divisions: u32) -> () {
     edge_dfs(&root, divisions, &arena);
 
     //TEMPORARY call to delay a refactor of the call chain in edges.rs
+    println!("MAP LEAF COUNT: {}", map[0].len());
     let mut e = orthogonal_paths(EDGES.read().unwrap().to_vec(), map);
     EDGES.write().unwrap().clear();
     EDGES.write().unwrap().append(&mut e);
@@ -173,6 +168,7 @@ fn main() {
 
     split_dfs(&mut root, divisions, &mut rng);
     build_dfs(&mut root, &mut tvec, &mut rng, &mut obj_data, v);
+    println!("Structure construction finished, now drawing map");
 
     //This needs to be made into a loop that works regardless of how many dimensions there are, but this will do for now
     //TODO NEXT: Use sorted tile map to route the manhattan paths between the guaranteed space between rooms.
@@ -194,8 +190,11 @@ fn main() {
 
     
     edge_dfs(&root, divisions, &arena);
+    println!("Map collection finished, now running orthogonal pathing algorithm");
 
     //TEMPORARY call to delay a refactor of the call chain in edges.rs
+    map[0].iter().for_each(|t| println!("{:#?}", t));
+    println!("MAP LEAF COUNT: {}", map[0].len());
     let mut e = orthogonal_paths(EDGES.read().unwrap().to_vec(), map);
     EDGES.write().unwrap().clear();
     EDGES.write().unwrap().append(&mut e);

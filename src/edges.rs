@@ -1,4 +1,5 @@
 use core::panic;
+use std::eprintln;
 use std::sync::atomic::{AtomicUsize};
 use std::sync::{RwLock};
 use bumpalo::Bump;
@@ -91,175 +92,109 @@ fn generate_edges(rooms: (&[&Room], &[&Room]), axis: Axis, split_pos: Point3) ->
 
 pub fn orthogonal_paths(edges: Vec<(usize, Point3, Point3, Axis)>, map: Vec<Vec<(usize, Point3, Point3)>>) -> Vec<(usize, Point3, Point3, Axis)> {
     //TODO: Fix vector pass chain so that a function in edges.rs calls orthogonal rooms
-    
-    let delta: f64 = 1.0;
     let mut new_edges = Vec::new();
 
     for e in edges.iter() {
-        let mut dx = (e.2.0 - e.1.0) as f64;
-        let mut dy = (e.2.1 - e.1.1) as f64;
-        let mut dz = (e.2.2 - e.1.2) as f64;
+        let start_pos = e.1;
+        let target = e.2;
+        //let mut delta: i64 = 0;
 
-        let mut ex = *e;
-        let mut ey = *e;
-        let mut ez = (e.0, e.1, e.1, e.3);
-
-        let delta_o;
-        let mut start_pos = e.1;
-
-        //The span of the tile that cnontains the room minus the span of the room
-        //Should not be treated as an actual point
-
-        //Changed to get the free space from a tile, as opposed to from a room
-        //THIS IS PROBABLY CAUSING A CATOSTROPHIC ERROR
-        fn get_free_space(lc: Point3, rc: Point3) -> Point3 {
-                let b0 = (rc.0 - lc.0) - ((rc.0 - lc.0) as f64 * (1.0 - ROOM_SCALE_FACTOR)) as i64;
-                let b1 = (rc.1 - lc.1) - ((rc.1 - lc.1) as f64 * (1.0 - ROOM_SCALE_FACTOR)) as i64;
-                let b2 = (rc.2 - lc.2) - ((rc.2 - lc.2) as f64 * (1.0 - ROOM_SCALE_FACTOR)) as i64;
-                return Point3(b0, b1, b2);
-            }
+        //Select starting tile by scanning tile map for a tile that matches the index of the edge
+        let starting_tile = map[0].iter().filter(|t| t.0 == e.0).next().unwrap();
+        let mut prev_seg = (e.0, e.1, e.1, e.3);
         
-        match e.3 {
-            Axis::X => {
-                //Add check to ensure delta_o movement doesn't escape bounds 
-                delta_o = (dx / 4.0) as i64;
-                dx -= delta_o as f64;
-                ez = (ez.0, ez.1, Point3(ez.1.0 + delta_o / 2, ez.1.1, ez.1.2), ez.3);
-                new_edges.push(ez);
+        println!("Starting tile: {:#?}", starting_tile);
+        let mut current_tile = starting_tile;
 
-
-            },
-            Axis::Y => {
-                delta_o = (dy / 4.0) as i64;
-                dy -= delta_o as f64;
-                ez = (ez.0, ez.1, Point3(ez.1.0, ez.1.1 + (delta_o / 2), ez.1.2), ez.3);
-                new_edges.push(ez);
-
-            },
-            Axis::Z => {
-                delta_o = (dz / 4.0) as i64;
-                dz -= delta_o as f64;
-                ez = (ez.0, ez.1, Point3(ez.1.0, ez.1.1, ez.1.2 + (delta_o / 2)), ez.3);
-                new_edges.push(ez);
-
+        //Make sure that the starting position is correct for the math
+        for axis in 0..3 {
+            if target[axis] > starting_tile.2[axis] {
+                prev_seg.1 = prev_seg.2;
+                prev_seg.2[axis] = current_tile.2[axis];
+            } else if target[axis] < starting_tile.1[axis] {
+                prev_seg.2[axis] = current_tile.1[axis];
+                prev_seg.1 = prev_seg.2;
+            } else {
+                //This coordinate doesn't need to be snapped at all!
+                prev_seg.1 = prev_seg.2;
+                prev_seg.2[axis] = start_pos[axis];
             }
-        }
+            new_edges.push(prev_seg)
         
-        let target: Point3 = match e.3 {
-            Axis::X => Point3(e.2.0 - (delta_o / 2), e.2.1, e.2.2),
-            Axis::Y => Point3(e.2.0, e.2.1 - (delta_o / 2), e.2.2),
-            Axis::Z => Point3(e.2.0, e.2.1, e.2.2 - (delta_o / 2)),
-        };
-
-        map[0].iter().for_each(|v| println!("{:#?}", v));
-        let starting_room = map[0].iter().filter(|t| t.0 == e.0).next().unwrap();
-        println!("Starting Room (The one used for the initial free space calculation): {:#?}", starting_room);
-        let mut free_space = get_free_space(starting_room.1, starting_room.2);
-        println!("Free space generated from the starting tile: {:#?}", free_space);
-
-        while ez.2 != target {
-
-            //X bounds check
-            //Now add checks for decreasing paths and everything should be finished
-            let x_change = ez.2.0 + (dx * delta) as i64;
-            if x_change >= start_pos.0 + free_space.0 && x_change <= SIZE.0 {
-
-
-                let r = map[0].iter()
-                        .filter(|t| t.1.0 == start_pos.0 + free_space.0 || t.2.0 == start_pos.0 + free_space.0)
-                        .min_by_key(|t| ((e.1.sum().pow(2) + e.2.sum().pow(2)) - (t.1.sum().pow(2) + t.2.sum().pow(2))).pow(2));
-                let r = match r {
-                        Some(v) => v,
-                        None => { 
-                            print!(
-                                "No room found with bounds that match queried bounds! Critical error in pathing function! Bounds: x: {} y: {} z: {} | Edge: x: {} y: {} z: {} | Axis: {:#?} | Split Point: {}",
-                                start_pos.0 + free_space.0, start_pos.1 + free_space.1, start_pos.2 + free_space.2, ez.2.0, ez.2.1, ez.2.2, e.3, start_pos.0 + free_space.0
-                            );
-                            panic!();
-                        }
-                    };
-
-               
-                dx -= ((free_space.0 + start_pos.0) - ez.2.0) as f64;
-                start_pos = Point3(start_pos.0 + free_space.0, ez.2.1, ez.2.2);
-                ex = (ez.0, ez.2, start_pos, e.3);
-                free_space = get_free_space(r.1, r.2);
-
-            } else {
-                ex = (ez.0, ez.2, Point3(ez.2.0 + (dx * delta) as i64, ez.2.1, ez.2.2), e.3);
-            }
-
-            //Y bounds check
-            let y_change = ex.2.1 +  (dy * delta) as i64;
-            if y_change >= start_pos.1 + free_space.1 && y_change <= SIZE.1 {
-                let r = map[1].iter()
-                        .filter(|t| t.1.1 == start_pos.1 + free_space.1 || t.2.1 == start_pos.1 + free_space.1)
-                        .min_by_key(|t| ((e.1.sum().pow(2) + e.2.sum().pow(2)) - (t.1.sum().pow(2) + t.2.sum().pow(2))).pow(2));
-                let r = match r {
-                        Some(v) => v,
-                        None => { 
-                            print!(
-                                "No room found with bounds that match queried bounds! Critical error in pathing function! Bounds: x: {} y: {} z: {} | Edge: x: {} y: {} z: {} | Axis: {:#?} | Split Point: {}",
-                                start_pos.0 + free_space.0, start_pos.1 + free_space.1, start_pos.2 + free_space.2, ex.2.0, ex.2.1, ex.2.2, e.3, start_pos.1 + free_space.1
-                            );
-                            panic!();
-                        }
-                    };
-                
-                dy -= ((free_space.1 + start_pos.1) - ez.2.1) as f64;
-                start_pos = Point3(ex.2.0, start_pos.1 + free_space.1, ex.2.2);
-                ey = (ex.0, ex.2, start_pos, e.3);
-                free_space = get_free_space(r.1, r.2);
-
-            } else {
-                ey = (ez.0, ex.2, Point3(ex.2.0, ex.2.1 + (dy * delta) as i64, ex.2.2), e.3);
-            }
-
-            //Z bounds check
-            let z_change = ey.2.2 +  (dz * delta) as i64;
-            if z_change >= start_pos.2 + free_space.2 && z_change <= SIZE.2 {
-                let r = map[2].iter()
-                        .filter(|t| t.1.2 == start_pos.2 + free_space.2 || t.2.2 == start_pos.2 + free_space.2 )
-                        .min_by_key(|t| ((e.1.sum().pow(2) + e.2.sum().pow(2)) - (t.1.sum().pow(2) + t.2.sum().pow(2))).pow(2));
-                let r = match r {
-                        Some(v) => v,
-                        None => { 
-                            print!(
-                                "No room found with bounds that match queried bounds! Critical error in pathing function! Bounds: x: {} y: {} z: {} | Edge: x: {} y: {} z: {} | Axis: {:#?} | Split Point: {}",
-                                start_pos.0 + free_space.0, start_pos.1 + free_space.1, start_pos.2 + free_space.2, ey.2.0, ey.2.1, ey.2.2, e.3, start_pos.2 + free_space.2
-                            );
-                            panic!();
-                        }
-                    };
-
-               
-                
-                dz -= ((free_space.2 + start_pos.2) - ez.2.2) as f64;
-                start_pos = Point3(ey.2.0, ey.2.1, start_pos.2 + free_space.2);
-                ez = (ey.0, ey.2, start_pos, e.3);
-                free_space = get_free_space(r.1, r.2);
-
-            } else {
-                ez = (ez.0, ey.2, Point3(ey.2.0, ey.2.1, ey.2.2 + (dz * delta) as i64), e.3);
-            }
-
-            new_edges.push(ex);
-            new_edges.push(ey);
-            new_edges.push(ez);
         }
 
-        match e.3 {
-            Axis::X => {
-                ez = (ez.0, ez.2, Point3(ez.2.0 + (delta_o / 2), ez.2.1, ez.2.2), ez.3);
-                new_edges.push(ez);
-            }
-            Axis::Y => {
-                ez = (ez.0, ez.2, Point3(ez.2.0, ez.2.1 + (delta_o / 2), ez.2.2), ez.3);
-                new_edges.push(ez);
-            }
-            Axis::Z => {
-                ez = (ez.0, ez.2, Point3(ez.2.0, ez.2.1, ez.2.2 + (delta_o / 2)), ez.3);
-                new_edges.push(ez);
+        while prev_seg.2 != target {
+            eprintln!("Now iterating through axis until target is reached!");
+            for axis in 0..3 {
+                eprintln!("Axis: {}", axis);
+                if start_pos[axis] < target[axis] {
+                    if prev_seg.2[axis] < target[axis] {
+                        if current_tile.2[axis] > target[axis] {
+                            //Target is within this tile, so snap to it
+                            prev_seg.1 = prev_seg.2;
+                            prev_seg.2[axis] = target[axis];
+
+                            //Push
+                            new_edges.push(prev_seg);
+                        } else {
+                            let tile = map[0].iter()
+                                    .filter(|t| t.1[axis] == current_tile.2[axis] && t.0 != current_tile.0)
+                                    //It may be worth changing this min_by_key to be the closest to target rather than closest to current room
+                                    .min_by_key(|t| target[axis] - t.2[axis]);
+                            let tile = match tile {
+                                    Some(v) => v,
+                                    None => { 
+                                        print!(
+                                            "No room found with bounds that match queried bounds! Critical error in pathing function! Edge: x: {} y: {} z: {} | Axis: {:#?} | Split Point: {}",
+                                            current_tile.2.0, current_tile.2.1, current_tile.2.2, e.3, current_tile.2[axis]
+                                        );
+                                        panic!();
+                                    }
+                                };
+
+                            //Change prev_seg so that it stretches the correct span
+                            prev_seg.1 = prev_seg.2;
+                            prev_seg.2[axis] = current_tile.2[axis];
+
+                            //Push edge (go to sleep if this comment was necessary)
+                            new_edges.push(prev_seg);
+                            
+                            //Move bounds
+                            current_tile = tile;
+                        } 
+                    }
+                } else {
+                    if prev_seg.2[axis] > target[axis] {
+                        if current_tile.1[axis] < target[axis] {
+                            prev_seg.1 = prev_seg.2;
+                            prev_seg.2[axis] = target[axis];
+                            new_edges.push(prev_seg);
+                        } else {
+                            let tile = map[0].iter()
+                                    .filter(|t| (t.1[axis] == current_tile.1[axis] || t.2[axis] == current_tile.1[axis]) && t.0 != current_tile.0)
+                                    .min_by_key(|t| t.1[axis] - target[axis]);
+                            let tile = match tile {
+                                    Some(v) => v,
+                                    None => { 
+                                        print!(
+                                            "No room found with bounds that match queried bounds! Critical error in pathing function! | Edge: x: {} y: {} z: {} | Axis: {:#?} | Split Point: {}",
+                                            current_tile.1.0, current_tile.1.1, current_tile.1.2, e.3, current_tile.1[axis]
+                                        );
+                                        panic!();
+                                    }
+                                };
+
+                            //Change prev_seg so that it stretches the correct span
+                            prev_seg.1 = prev_seg.2;
+                            prev_seg.2[axis] = current_tile.1[axis];
+                            //Push edge (go to sleep if this comment was necessary)
+                            new_edges.push(prev_seg);
+
+                            //Update current tile
+                            current_tile = tile;
+                        }
+                    }
+                }
             }
         }
     }

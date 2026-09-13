@@ -170,6 +170,36 @@ impl Point3 {
     pub fn sum(&self) -> i64 {
         return &self.0 + &self.1 + &self.2
     }
+    pub fn add_at(&mut self, index: usize, value: i64) {
+        self[index] += value;
+    }
+    pub fn set_to(&mut self, index: usize, value: i64) {
+        self[index] = value;
+    }
+}
+
+impl std::ops::Index<usize> for Point3 {
+    type Output = i64;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        match index {
+            0 => &self.0,
+            1 => &self.1,
+            2 => &self.2,
+            _ => panic!("Point3 index out of bounds"),
+        }
+    }
+}
+
+impl std::ops::IndexMut<usize> for Point3 {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        match index {
+            0 => &mut self.0,
+            1 => &mut self.1,
+            2 => &mut self.2,
+            _ => panic!("Point3 index out of bounds"),
+        }
+    }
 }
 
 impl Sub<Point3> for Point3 {
