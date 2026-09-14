@@ -1,6 +1,6 @@
 # grch-procedural-gen
 
-A 3D BSP procedural generation system written in Rust with minimal dependencies, featuring deterministic generation, orthogonal corridor routing, and OBJ export.
+A minimal-dependency 3D BSP procedural generation system written in Rust, featuring deterministic generation, orthogonal corridor routing, and OBJ export.
 
 <p align="center">
   <img src="assets/grch_obj_angle_1.png" width="85%">
