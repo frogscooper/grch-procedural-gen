@@ -25,4 +25,4 @@ A minimal-dependency 3D BSP procedural generation system written in Rust, featur
 
 ## How it works
 
-BSP partitioning → room placement → room connection → orthogonal routing → corridor geometry → OBJ export
+BSP partitioning -> room placement -> room connection -> orthogonal routing -> corridor geometry -> OBJ export
