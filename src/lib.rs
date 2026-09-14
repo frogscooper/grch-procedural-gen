@@ -1,6 +1,5 @@
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::atomic::AtomicUsize;
-use bumpalo::Bump;
 use rand::{self, RngExt};
 use rand::rngs::StdRng;
 use rand::SeedableRng;
@@ -107,10 +106,9 @@ pub fn initbt(size: Point3, divisions: u32) -> () {
 
     split_dfs(&mut root, divisions, &mut rng);
     build_dfs(&mut root, &mut tvec, &mut rng, &mut obj_data, v);
-
-    //This needs to be made into a loop that works regardless of how many dimensions there are, but this will do for now
-    //TODO NEXT: Use sorted tile map to route the manhattan paths between the guaranteed space between rooms.
-    //Find an efficient way to do this, the naïve approach is to just use a bunch of conditionals.
+    eprintln!("Structure construction finished, now drawing map");
+    
+    //Initialize map
     let mut map = Vec::<Vec<(usize, Point3, Point3)>>::new();
 
     //Map of vectors of the form:
@@ -123,24 +121,23 @@ pub fn initbt(size: Point3, divisions: u32) -> () {
     map.push(tvec.iter().map(|t| (t.index, t.lc, t.rc)).collect());
 
 
+    //Initialize vector used to store the edges generated in the edge_dfs call chain
+    let mut edges = Vec::<(usize, Point3, Point3, Axis)>::new();
+  
+    edge_dfs(&root, divisions, &mut edges);
+    eprintln!("Map collection finished, now running orthogonal pathing algorithm");
 
-    let arena = Bump::new();
-
-    
-    edge_dfs(&root, divisions, &arena);
-
-    //TEMPORARY call to delay a refactor of the call chain in edges.rs
-    println!("MAP LEAF COUNT: {}", map[0].len());
-    let mut e = orthogonal_paths(EDGES.read().unwrap().to_vec(), map);
-    EDGES.write().unwrap().clear();
-    EDGES.write().unwrap().append(&mut e);
-    let meowmeow = create_corridors(EDGES.read().unwrap().to_vec());
+    //Call functions to turn the edges into orthogonal paths and then turn those into corridors
+    let orthogonal_edges = orthogonal_paths(edges, map);
+    let corridors = create_corridors(orthogonal_edges);
 
     //Looks a little weird, v is just an index used inside the box function
     
-    for e in meowmeow {
-        v = add_obj_box(e.0, e.1, &mut obj_data, v);
+    for cor in corridors {
+        //v here is a counter that is used for the OBJ export
+        v = add_obj_box(cor.0, cor.1, &mut obj_data, v);
     }
+
 
     let mut file = File::create("grch_export.obj").expect("Failed to create file");
     file.write_all(obj_data.as_bytes()).expect("Failed to write to file");
@@ -149,6 +146,7 @@ pub fn initbt(size: Point3, divisions: u32) -> () {
 }
 
 
+/* 
 fn main() {
     let size = Point3(2048, 2048, 2048);
     let divisions: u32 = 6;
@@ -168,11 +166,9 @@ fn main() {
 
     split_dfs(&mut root, divisions, &mut rng);
     build_dfs(&mut root, &mut tvec, &mut rng, &mut obj_data, v);
-    println!("Structure construction finished, now drawing map");
-
-    //This needs to be made into a loop that works regardless of how many dimensions there are, but this will do for now
-    //TODO NEXT: Use sorted tile map to route the manhattan paths between the guaranteed space between rooms.
-    //Find an efficient way to do this, the naïve approach is to just use a bunch of conditionals.
+    eprintln!("Structure construction finished, now drawing map");
+    
+    //Initialize map
     let mut map = Vec::<Vec<(usize, Point3, Point3)>>::new();
 
     //Map of vectors of the form:
@@ -185,32 +181,29 @@ fn main() {
     map.push(tvec.iter().map(|t| (t.index, t.lc, t.rc)).collect());
 
 
+    //Initialize vector used to store the edges generated in the edge_dfs call chain
+    let mut edges = Vec::<(usize, Point3, Point3, Axis)>::new();
+  
+    edge_dfs(&root, divisions, &mut edges);
+    eprintln!("Map collection finished, now running orthogonal pathing algorithm");
 
-    let arena = Bump::new();
-
-    
-    edge_dfs(&root, divisions, &arena);
-    println!("Map collection finished, now running orthogonal pathing algorithm");
-
-    //TEMPORARY call to delay a refactor of the call chain in edges.rs
-    map[0].iter().for_each(|t| println!("{:#?}", t));
-    println!("MAP LEAF COUNT: {}", map[0].len());
-    let mut e = orthogonal_paths(EDGES.read().unwrap().to_vec(), map);
-    EDGES.write().unwrap().clear();
-    EDGES.write().unwrap().append(&mut e);
-    let meowmeow = create_corridors(EDGES.read().unwrap().to_vec());
+    //Call functions to turn the edges into orthogonal paths and then turn those into corridors
+    let orthogonal_edges = orthogonal_paths(edges, map);
+    let corridors = create_corridors(orthogonal_edges);
 
     //Looks a little weird, v is just an index used inside the box function
     
-    for e in meowmeow {
-        v = add_obj_box(e.0, e.1, &mut obj_data, v);
+    for cor in corridors {
+        //v here is a counter that is used for the OBJ export
+        v = add_obj_box(cor.0, cor.1, &mut obj_data, v);
     }
 
     let mut file = File::create("grch_export.obj").expect("Failed to create file");
     file.write_all(obj_data.as_bytes()).expect("Failed to write to file");
     println!("OBJ file exported");
-
 }
+
+*/
 
 
 

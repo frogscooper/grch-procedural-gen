@@ -15,14 +15,7 @@ pub fn add_obj_box(c1: Point3, c2: Point3, obj_data: &mut String, v: usize) -> u
     obj_data.push_str(&format!("v {} {} {}\n", c1.0, c2.1, c1.2)); //7
     obj_data.push_str(&format!("v {} {} {}\n", c1.0, c1.1, c2.2));
 
-    //I don't understand exactly why normals are being used here, so hopefully this works
-    obj_data.push_str(&format!("vn {} {} {}\n", 0.0, 0.0, 1.0));
-    obj_data.push_str(&format!("vn {} {} {}\n", 0.0, 0.0, -1.0));
-    obj_data.push_str(&format!("vn {} {} {}\n", 0.0, 1.0, 0.0));
-    obj_data.push_str(&format!("vn {} {} {}\n", 0.0, -1.0, 0.0));
-    obj_data.push_str(&format!("vn {} {} {}\n", 1.0, 0.0, 0.0));
-    obj_data.push_str(&format!("vn {} {} {}\n", -1.0, 0.0, 0.0));
-
+    
     let o = v;
 
     obj_data.push_str(&format!("f {} {} {}\n", o+1, o+7, o+5));

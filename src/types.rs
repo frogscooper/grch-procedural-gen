@@ -26,7 +26,7 @@ impl BSPNode<Tile> {
 
 
     pub fn split(&mut self, rng: &mut StdRng) {
-            let rng_factor = rand::random_range(0.3..0.7);
+            let rng_factor = rng.random_range(0.3..0.7);
 
             let next_split = match self.split_d {
                             Axis::X => {
