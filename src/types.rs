@@ -17,14 +17,7 @@ pub struct BSPNode<T> {
     pub split_d: Axis
 }
 
-
-
-
-
 impl BSPNode<Tile> {
-    //Refactor WIP: Point2 -> Point3, creating new splitting algorithm
-
-
     pub fn split(&mut self, rng: &mut StdRng) {
             let rng_factor = rng.random_range(0.3..0.7);
 

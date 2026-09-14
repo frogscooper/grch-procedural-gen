@@ -6,8 +6,6 @@ use rand::SeedableRng;
 use std::fs::File;
 use std::io::Write;
 
-//Used for plotting the tiles:
-
 pub mod types;
 use crate::types::*;
 pub mod edges;
@@ -90,7 +88,6 @@ fn build_dfs(root: &mut BSPNode<Tile>, tvec: &mut Vec<Tile>, rng: &mut StdRng, o
 }
 
 pub fn initbt(size: Point3, divisions: u32) -> () {
-    //TODO: Refactor corridor creation to route between gaps in-between rooms. This is what map will be used for, it will keep multiple vecs containing the position of any given tile if the array was sorted
     let mut rng = StdRng::seed_from_u64(SEED);
 
     let mut root = BSPNode{

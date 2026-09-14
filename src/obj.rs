@@ -6,6 +6,7 @@ pub fn create_obj() -> String {
 }
 
 pub fn add_obj_box(c1: Point3, c2: Point3, obj_data: &mut String, v: usize) -> usize {
+    //Add vertices
     obj_data.push_str(&format!("v {} {} {}\n", c1.0, c1.1, c1.2)); //1
     obj_data.push_str(&format!("v {} {} {}\n", c2.0, c1.1, c1.2)); //2
     obj_data.push_str(&format!("v {} {} {}\n", c2.0, c2.1, c1.2)); //3 
@@ -18,6 +19,7 @@ pub fn add_obj_box(c1: Point3, c2: Point3, obj_data: &mut String, v: usize) -> u
     
     let o = v;
 
+    //Add faces
     obj_data.push_str(&format!("f {} {} {}\n", o+1, o+7, o+5));
     obj_data.push_str(&format!("f {} {} {}\n", o+1, o+5, o+8)); // Left g
     obj_data.push_str(&format!("f {} {} {}\n", o+1, o+7, o+3));

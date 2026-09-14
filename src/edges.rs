@@ -1,5 +1,4 @@
 use core::panic;
-use std::eprintln;
 use std::sync::atomic::AtomicUsize;
 
 use crate::CORRIDOR_WIDTH;
@@ -73,7 +72,6 @@ fn generate_edges(rooms: (&[&Room], &[&Room]), axis: Axis, split_pos: Point3, ed
 }
 
 pub fn orthogonal_paths(edges: Vec<(usize, Point3, Point3, Axis)>, map: Vec<Vec<(usize, Point3, Point3)>>) -> Vec<(usize, Point3, Point3, Axis)> {
-    //TODO: Fix vector pass chain so that a function in edges.rs calls orthogonal rooms
     let mut new_edges = Vec::new();
 
     for e in edges.iter() {
@@ -106,9 +104,7 @@ pub fn orthogonal_paths(edges: Vec<(usize, Point3, Point3, Axis)>, map: Vec<Vec<
         }
 
         while prev_seg.2 != target {
-            eprintln!("Now iterating through axis until target is reached!");
             for axis in 0..3 {
-                eprintln!("Axis: {}", axis);
                 if start_pos[axis] < target[axis] {
                     if prev_seg.2[axis] < target[axis] {
                         if current_tile.2[axis] > target[axis] {
@@ -137,7 +133,6 @@ pub fn orthogonal_paths(edges: Vec<(usize, Point3, Point3, Axis)>, map: Vec<Vec<
                             //Change prev_seg so that it stretches the correct span
                             prev_seg.1 = prev_seg.2;
                             prev_seg.2[axis] = current_tile.2[axis];
-
 
                             new_edges.push(prev_seg);
                             
